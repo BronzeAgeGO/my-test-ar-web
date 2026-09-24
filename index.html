@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Web AR Demo · AR.js</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;}
+  /* 启动遮罩：必须有用户手势才能申请摄像头权限 */
+  #tip{position:fixed;inset:0;z-index:99;display:flex;flex-direction:column;
+       align-items:center;justify-content:center;gap:16px;padding:24px;
+       box-sizing:border-box;text-align:center;background:#0b0d12;
+       color:#e8eefc;font:16px/1.7 system-ui,-apple-system,"PingFang SC",sans-serif;}
+  #tip h1{font-size:20px;margin:0;}
+  #tip p{margin:0;font-size:14px;color:#9aa7bd;}
+  #tip button{padding:13px 32px;border:0;border-radius:999px;font-size:16px;
+       font-weight:600;color:#fff;background:linear-gradient(135deg,#4f8cff,#7b5cff);}
+  .hud{position:fixed;left:0;right:0;bottom:0;z-index:10;padding:10px;
+       text-align:center;color:#fff;font:13px/1.5 system-ui,sans-serif;
+       text-shadow:0 1px 3px #000;pointer-events:none;display:none;}
+  .hud a{color:#7cc4ff;pointer-events:auto;}
+</style>
+</head>
+<body>
+
+<div id="tip">
+  <h1>📱 Web AR 演示</h1>
+  <p>需要 HTTPS 环境 + 摄像头权限<br>请用另一台设备打开 Hiro 标记图</p>
+  <button id="startBtn">开始体验</button>
+</div>
+
+<div class="hud" id="hud">
+  对准 Hiro 标记 · 点击屏幕切换颜色
+</div>
+
+<!-- ========== AR 场景模板 ========== -->
+<template id="arTemplate">
+  <a-scene
+    embedded
+    arjs="sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3; debugUIEnabled: false;"
+    renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true;"
+    vr-mode-ui="enabled: false"
+    loading-screen="enabled: false"
+    background="transparent: true">
+
+    <!-- preset="hiro" 表示识别 Hiro 标记 -->
+    <a-marker preset="hiro" id="marker" emitevents="true" cursor="rayOrigin: mouse">
+      <a-entity id="root">
+
+        <!-- 悬浮旋转的外环 -->
+        <a-torus position="0 0.35 0" radius="0.42" radius-tubular="0.012"
+                 color="#4fc3ff"
+                 material="metalness:0.9; roughness:0.2; emissive:#0a3550"
+                 animation="property: rotation; to: 0 0 360; loop: true; dur: 9000; easing: linear">
+        </a-torus>
+
+        <!-- 中心漂浮多面体 -->
+        <a-octahedron id="core" position="0 0.35 0" radius="0.2"
+                      material="color:#ff3d71; metalness:0.7; roughness:0.15; emissive:#4a0018"
+                      animation__spin="property: rotation; to: 0 360 0; loop: true; dur: 5000; easing: linear"
+                      animation__float="property: position; to: 0 0.42 0; dir: alternate; loop: true; dur: 1600; easing: easeInOutSine">
+        </a-octahedron>
+
+        <!-- 地面光圈 -->
+        <a-entity position="0 0.004 0" rotation="-90 0 0"
+                  geometry="primitive: ring; radiusInner: 0.5; radiusOuter: 0.53"
+                  material="color:#4fc3ff; opacity:0.65; transparent:true; side:double">
+        </a-entity>
+
+        <!-- 文字 -->
+        <a-text value="HELLO AR" align="center" position="0 0.78 0"
+                scale="0.5 0.5 0.5" color="#ffffff"></a-text>
+
+      </a-entity>
+    </a-marker>
+
+    <!-- AR 场景必须有相机 -->
+    <a-entity camera></a-entity>
+  </a-scene>
+</template>
+
+<!-- ========== 依赖（顺序不能反） ========== -->
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ar.js@3/aframe/build/aframe-ar.js"></script>
+
+<script>
+  const startBtn = document.getElementById('startBtn');
+  const hud = document.getElementById('hud');
+  let started = false;
+
+  startBtn.addEventListener('click', () => {
+    if (started) return;
+    started = true;
+
+    // 用户手势中注入场景 → 摄像头权限请求才不会失败（iOS 尤其重要）
+    const frag = document.getElementById('arTemplate').content.cloneNode(true);
+    document.body.appendChild(frag);
+
+    document.getElementById('tip').remove();
+    hud.style.display = 'block';
+  });
+
+  // 点击屏幕切换核心颜色
+  const palette = ['#ff3d71', '#4fc3ff', '#ffd166', '#06d6a0', '#b388ff'];
+  let ci = 0;
+  document.body.addEventListener('click', () => {
+    const core = document.getElementById('core');
+    if (!core) return;
+    ci = (ci + 1) % palette.length;
+    core.setAttribute('material', 'color', palette[ci]);
+  });
+</script>
+</body>
+</html>
